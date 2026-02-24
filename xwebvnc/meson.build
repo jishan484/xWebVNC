@@ -5,6 +5,7 @@ xwebvnc_srcs = assets_sources + [
     'vncQueue.c',
     'webSocket.c',
     'vncInput.c',
+    'clipboard.c',
 ]
 
 # Include your own folder + DIX headers

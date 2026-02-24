@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include "input.h"
 #include "inputstr.h"
+#include "libs/clipboard.h"
 #include "mi_priv.h"
 #include "webvnc.h"
 
@@ -99,9 +100,8 @@ void process_mouse_scroll(int direction) {
 
 
 
-void process_client_Input(char *data, int clientSD) {
+void process_client_Input(char *data, uint64_t len, int clientSD) {
     if(!app_running_indicator) return;
-    int len = strlen(data);
     int x = 0, y = 0, i = 1, x2 = 0, y2 = 0;
 
     if (data[0] == 'C')
@@ -194,6 +194,13 @@ void process_client_Input(char *data, int clientSD) {
         else if(data[1] == 'S') app_output_quality = 20;
         else if(data[1] == 'R') app_output_quality = 100;
         force_full_screen_refresh = 1;
+    }
+    else if (data[0] == 'P') {
+        ServerSetClipboard(data+1, len - 1);
+        process_key_press(37, 1);
+        process_key_press(55, 1);
+        process_key_press(37, 0);
+        process_key_press(55, 0);
     }
 }
 

@@ -21,10 +21,10 @@ typedef struct DamageQueue DamageQueue;
  //                  Main App                      //
 //------------------------------------------------//
 
-void XWEBVNC_init(ScreenPtr screen);
 void XWEBVNC_close(void);
 void XWEBVNC_setup(void);
 void XWEBVNC_cleanup(void);
+void XWEBVNC_init(ScreenPtr screen);
 void XWEBVNC_log(const char * message);
 void XWEBVNC_start_app_main_loop(void);
 void XWEBVNC_send_frame(int x, int y, int w, int h);
@@ -56,12 +56,13 @@ int ws_has_client(Websocket *ws);
 void ws_connections(Websocket *ws);
 void ws_begin(Websocket *ws, int port);
 void ws_decode(unsigned char *src, char *dest);
+uint64_t ws_get_payload_len(unsigned char *data);
 void ws_sendText(Websocket *ws, char *text, int sid);
 void ws_sendFrame(Websocket *ws, char *img, long size, int sid);
 void ws_onMessage(Websocket *ws, void (*ptr)(char *data, int sid));
 void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid);
 void ws_sendRaw(Websocket *ws, int startByte, char *data, long size, int sid);
-void ws_assign(Websocket *ws, void (*a)(char * message, int i), void (*b)(int j));
+void ws_assign(Websocket *ws, void (*a)(char * message, uint64_t len, int i), void (*b)(int j));
 void ws_p_sendRaw(Websocket *ws, int startByte, char *data1, char *data2, long data1Size, long data2Size, int sid);
 
 
@@ -80,7 +81,7 @@ void add_mapping(long sym, int keycode);
 void process_mouse_scroll(int direction);
 Atom XWEBVNC_get_pointer_sprite_name(void);
 void process_key_press(int keycode, int is_pressed);
-void process_client_Input(char *data, int clientSD);
+void process_client_Input(char *data, uint64_t len, int clientSD);
 int  buildstr(char *buff, const char *prefix, int val);
 void process_mouse_drag(int x1, int y1, int x2, int y2);
 
@@ -139,7 +140,7 @@ struct Websocket {
 
     // Callbacks
     void (*callBack)(int sid);
-    void (*callBackMsg)(char *data, int sid);
+    void (*callBackMsg)(char *data, uint64_t len, int sid);
 };
 
 struct XScreenConf {

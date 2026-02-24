@@ -53,6 +53,7 @@ SOFTWARE.
 #include "dispatch.h"
 #include "selection.h"
 #include "xace.h"
+#include "xwebvnc/libs/clipboard.h"
 
 /*****************************************************************
  * Selection Stuff
@@ -211,6 +212,7 @@ ProcSetSelectionOwner(ClientPtr client)
     pSel->client = (pWin ? client : NullClient);
 
     CallSelectionCallback(pSel, client, SelectionSetOwner);
+    _server_owned_clipboard = FALSE;
     return Success;
 }
 
@@ -258,6 +260,9 @@ ProcConvertSelection(ClientPtr client)
 
     REQUEST(xConvertSelectionReq);
     REQUEST_SIZE_MATCH(xConvertSelectionReq);
+
+    if (_server_owned_clipboard)
+        return _server_clipboard(client, stuff);
 
     rc = dixLookupWindow(&pWin, stuff->requestor, client, DixSetAttrAccess);
     if (rc != Success)

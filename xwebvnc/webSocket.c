@@ -51,7 +51,7 @@ void ws_wakeup(void) {
     write(wake_pipe[1], "x", 1);
 }
 
-void ws_assign(Websocket *ws, void (*cbm)(char *data, int sid), void (*cb)(int sid)) {
+void ws_assign(Websocket *ws, void (*cbm)(char *data, uint64_t len, int sid), void (*cb)(int sid)) {
     ws->callBackMsg = cbm;
     ws->callBack = cb;
 }
@@ -71,13 +71,41 @@ int ws_has_client(Websocket *ws) {
     return ws->clients;
 }
 
+uint64_t ws_get_payload_len(unsigned char *data) {
+    uint64_t payload_len = data[1] & 0x7F;
+
+    if (payload_len == 126) {
+        payload_len = (data[2] << 8) | data[3];
+    }
+    else if (payload_len == 127) {
+        payload_len = 0;
+        for (int i = 0; i < 8; i++) {
+            payload_len = (payload_len << 8) | data[2 + i];
+        }
+    }
+
+    return payload_len;
+}
+
 void ws_decode(unsigned char *data, char *result) {
     if (data[0] == 0) return;
-    int size = data[1] & 127;
-    int index = 2;
-    for (int i = 6; i < size + 6; i++) {
-        result[i - 6] = data[i] ^ data[index++];
-        if (index == 6) index = 2;
+    uint64_t payload_len = data[1] & 0x7F;
+    size_t offset = 2;
+    if (payload_len == 126) {
+        payload_len = (data[2] << 8) | data[3];
+        offset += 2;
+    }
+    else if (payload_len == 127) {
+        payload_len = 0;
+        for (int i = 0; i < 8; i++) {
+            payload_len = (payload_len << 8) | data[2 + i];
+        }
+        offset += 8;
+    }
+    unsigned char *mask = &data[offset];
+    offset += 4;
+    for (uint64_t i = 0; i < payload_len; i++) {
+        result[i] = data[offset + i] ^ mask[i % 4];
     }
 }
 
@@ -417,9 +445,49 @@ void ws_connections(Websocket *ws) {
                         {
                             if (ws->callBackMsg != NULL)
                             {
-                                char inputData[200]={0};
-                                ws_decode(buffer , inputData);
-                                ws->callBackMsg(inputData, i);
+                                uint64_t payload_len = ws_get_payload_len(buffer);
+                                if(payload_len < 127){
+                                    char inputData[200]={0};
+                                    ws_decode(buffer , inputData);
+                                    ws->callBackMsg(inputData, payload_len, i);
+                                } else {
+                                  size_t header_size = 2;
+
+                                  if ((buffer[1] & 0x7F) == 126)
+                                    header_size += 2;
+                                  else if ((buffer[1] & 0x7F) == 127)
+                                    header_size += 8;
+                                  header_size += 4; // mask
+
+                                  uint64_t full_frame_size = header_size + payload_len;
+
+                                  unsigned char *frame = malloc(full_frame_size);
+                                  if (!frame)
+                                    return;
+                                  memcpy(frame, buffer, valread);
+                                  size_t total_read = valread;
+
+                                  while (total_read < full_frame_size) {
+                                    ssize_t n =
+                                        read(sd, frame + total_read,
+                                             full_frame_size - total_read);
+                                    if (n <= 0) {
+                                      free(frame);
+                                      return;
+                                    }
+                                    total_read += n;
+                                  }
+                                  char *inputData = malloc(payload_len);
+                                  if (!inputData) {
+                                    free(frame);
+                                    return;
+                                  }
+
+                                  ws_decode(frame, inputData);
+                                  ws->callBackMsg(inputData, payload_len, i);
+                                  free(inputData);
+                                  free(frame);
+                                }  
                             }
                         }
                     }

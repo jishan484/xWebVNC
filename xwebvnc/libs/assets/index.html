@@ -219,18 +219,12 @@
     setTimeout(function () { connect(); }, 2000);
 
     document.addEventListener('paste', handlePaste);
-    const sleep = (milis) => new Promise((resolve => setTimeout(() => resolve(), milis)));
     async function handlePaste(e) {
         e.stopPropagation();
-        e.preventDefault();
-        var text = e.clipboardData.getData('text/plain') || window.clipboardData.getData('Text');
-        if (webSocket != null && webSocket.readyState == 1) {
-            //update as soon as possible [make it server side]
-            for (var i = 0; i < text.length; i++) {
-                let key = getXkeySym(text[i]);
-                webSocket.send("K1" + key + "\0");
-                await sleep(10);
-            }
+        e.preventDefault();        
+        var text = e.clipboardData.getData('text/plain') || (window.clipboardData && window.clipboardData.getData('Text'));
+        if (webSocket != null && webSocket.readyState == 1 && text) {
+            webSocket.send("P" + text);
         }
     }
 
