@@ -11,25 +11,29 @@ static Atom targets;
 static Atom utf8;
 static Atom text;
 static Atom textPlain;
+static Atom compoundText;
 
 /* -------------------------------------------------- */
 /* Set clipboard                                      */
 /* -------------------------------------------------- */
 
 void ServerSetClipboard(const char *data, int len) {
+  if (gData)
+    free(gData);
+  gData = NULL;
+  gLen = 0;
+
   if (!targets) {
     targets = MakeAtom("TARGETS", 7, TRUE);
     utf8 = MakeAtom("UTF8_STRING", 11, TRUE);
     text = MakeAtom("TEXT", 4, TRUE);
     gSelection = MakeAtom("CLIPBOARD", 9, TRUE);
     textPlain = MakeAtom("text/plain;charset=utf-8", 24, TRUE);
+    compoundText = MakeAtom("COMPOUND_TEXT",13,TRUE);
   }
 
   if (!data || len <= 0)
     return;
-
-  if (gData)
-    free(gData);
 
   gData = malloc(len);
   if (!gData)
@@ -47,11 +51,10 @@ void ServerSetClipboard(const char *data, int len) {
 /* -------------------------------------------------- */
 
 void ServerClearClipboard(void) {
-  if (gData)
-    free(gData);
-  gData = NULL;
-  gLen = 0;
-  _server_owned_clipboard = FALSE;
+    if (gData)
+      free(gData);
+    gData = NULL;
+    gLen = 0;
 }
 
 void ServerForceClearClientClipboard_(void) {
@@ -94,16 +97,17 @@ int _server_clipboard(ClientPtr client, xConvertSelectionReq *stuff) {
   /* 1️⃣ Handle TARGETS request     */
   /* ============================= */
   if (stuff->target == targets) {
-    Atom supported[5];
+    Atom supported[6];
     supported[0] = targets;
     supported[1] = utf8;
     supported[2] = text;
     supported[3] = XA_STRING;
     supported[4] = textPlain;
+    supported[5]=compoundText;
 
     rc = dixChangeWindowProperty(serverClient, requestor, stuff->property,
                                      XA_ATOM, 32, PropModeReplace,
-                                     5, supported, FALSE);
+                                     6, supported, FALSE);
 
     if (rc != Success) {
       return rc;
@@ -113,11 +117,10 @@ int _server_clipboard(ClientPtr client, xConvertSelectionReq *stuff) {
   /* ============================= */
   /* 2️⃣ Handle TEXT request        */
   /* ============================= */
-  else if (stuff->target == utf8 || stuff->target == XA_STRING || stuff->target == text || stuff->target == textPlain) {
+  else if (stuff->target == utf8 || stuff->target == XA_STRING || stuff->target == text || stuff->target == textPlain || stuff->target==compoundText) {
     rc = dixChangeWindowProperty(serverClient, requestor, stuff->property,
                                  stuff->target, 8, PropModeReplace, gLen, gData,
                                  FALSE);
-    ServerClearClipboard();
     if (rc != Success)
       return rc;
   }
@@ -143,6 +146,5 @@ int _server_clipboard(ClientPtr client, xConvertSelectionReq *stuff) {
   event.u.selectionNotify.property = stuff->property;
 
   WriteEventsToClient(client, 1, &event);
-
   return Success;
 }

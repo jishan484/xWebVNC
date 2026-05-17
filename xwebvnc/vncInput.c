@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include "input.h"
 #include "inputstr.h"
+#include "libs/clientscreen.h"
 #include "libs/clipboard.h"
 #include "mi_priv.h"
 #include "webvnc.h"
@@ -36,7 +37,7 @@ int lookup_keycode(KeySym sym) {
     return keysym_table[hi] ? keysym_table[hi][lo] : 0;
 }
 
-void input_init(Websocket * gws) {
+void input_init(Websocket * gws, int w, int h) {
     kbd = inputInfo.keyboard;
     mouse = inputInfo.pointer;
     gl_ws = gws;
@@ -48,6 +49,7 @@ void input_init(Websocket * gws) {
     // setup keycode mapping for current master keyboard
     setup_wakeup_pipe();
     XWEBVNC_init_input();
+    setup_local_screen_info(w, h);
 }
 
 void process_key_press(int keycode, int is_pressed) {
@@ -98,7 +100,17 @@ void process_mouse_scroll(int direction) {
     write(wake_pipe[1], "x", 1);
 }
 
-
+// C: for click (left)
+// M: for mouse
+// R: for click (right)
+// D: for mouse drag
+// K: for keyboard keys
+// Q: for quality
+// P: for paste
+// A: for audio
+// B: go bottom (scroll)
+// T: go top (scroll)
+// S: for screen
 
 void process_client_Input(char *data, uint64_t len, int clientSD) {
     if(!app_running_indicator) return;
@@ -149,16 +161,13 @@ void process_client_Input(char *data, uint64_t len, int clientSD) {
         
         process_mouse_drag(x, y, x2, y2);
     }
-    else if (data[0] == 'S')
+    else if (data[0] == 'T')
     {
-        if (data[1] == 'U')
-        {
-            process_mouse_scroll(1);
-        }
-        else
-        {
-            process_mouse_scroll(-1);
-        }
+        process_mouse_scroll(1);
+    }
+    else if (data[0] == 'B')
+    {
+        process_mouse_scroll(-1);
     }
     else if (data[0] == 'K')
     {
@@ -201,6 +210,34 @@ void process_client_Input(char *data, uint64_t len, int clientSD) {
         process_key_press(55, 1);
         process_key_press(37, 0);
         process_key_press(55, 0);
+    } else if (data[0] == 'S') {
+        if(data[1] == 'S') {
+            char buffer[15] = {0};
+            int _i = 3;
+            while (data[_i] != ' ')
+            {
+                buffer[_i - 3] = data[_i];
+                _i++;
+            }
+            _i++;
+            int width = atol(buffer);
+            int height = atol(data+_i);
+            calculateScreenSize(&width, &height);
+            if(can_refresh(width, height)) {
+                if(resizeScreen(width, height))
+                    updateCurrentResolution(width, height);
+            }
+        } else {
+            //not implemented for now
+        }
+    }
+    else if (data[0] == 'A') {
+        if(data[1] == '1'){
+            app_audio_active = 1;
+        } else {
+            app_audio_active = 0;
+        }
+        XWEBVNC_create_config();
     }
 }
 

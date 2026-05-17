@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <sys/uio.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <arpa/inet.h>
@@ -22,6 +23,7 @@ void ws_setup_wakepipe(void);
 
 
 Websocket * ws_init(void) {
+    signal(SIGPIPE,SIG_IGN);
     Websocket * ws = malloc(sizeof(Websocket));
     ws->server_fd = 0;
     ws->clients = 0;
@@ -148,52 +150,63 @@ void ws_sendRaw(Websocket *ws, int startByte, char *data, long size, int sid) {
     }
 }
 
-void ws_p_sendRaw(Websocket *ws, int startByte, char *data1, char *data2, long data1Size, long data2Size, int sid) 
+void ws_p_sendRaw(Websocket *ws, int opcode,
+                  char *data1, char *data2,
+                  long data1Size, long data2Size, int sid)
 {
-    int moded = 0;
-    long imgSize = data1Size + data2Size;
-    char header[11];
-    header[0] = startByte;
-    if (imgSize <= 125)
-    {
-        header[1] = imgSize;
-        moded = 2;
-    }
-    else if (imgSize >= 126 && imgSize <= 65535)
-    {
+    long payloadLen = data1Size + data2Size;
+    unsigned char header[14];
+    int headerLen = 0;
+
+    // FIN=1, opcode=2 (binary)
+    header[0] = 0x82;
+
+    if (payloadLen <= 125) {
+        header[1] = (unsigned char)payloadLen;
+        headerLen = 2;
+    } else if (payloadLen <= 65535) {
         header[1] = 126;
-        header[2] = ((imgSize >> 8) & 255);
-        header[3] = (imgSize & 255);
-        moded = 4;
-    }
-    else
-    {
+        header[2] = (payloadLen >> 8) & 0xFF;
+        header[3] = payloadLen & 0xFF;
+        headerLen = 4;
+    } else {
         header[1] = 127;
-        header[2] = ((imgSize >> 56) & 255);
-        header[3] = ((imgSize >> 48) & 255);
-        header[4] = ((imgSize >> 40) & 255);
-        header[5] = ((imgSize >> 32) & 255);
-        header[6] = ((imgSize >> 24) & 255);
-        header[7] = ((imgSize >> 16) & 255);
-        header[8] = ((imgSize >> 8) & 255);
-        header[9] = (imgSize & 255);
-        moded = 10;
+        for (int i=0;i<8;i++) {
+            header[2+i] = (payloadLen >> (56 - 8*i)) & 0xFF;
+        }
+        headerLen = 10;
     }
-    if (sid != -1)
-    {
-        send(ws->client_socket[sid], header, moded, 0);    // for websocket header
-        send(ws->client_socket[sid], data1, data1Size, 0); // for websocket data 1
-        send(ws->client_socket[sid], data2, data2Size, 0); // for websocket data 2
-        return;
-    }
-    for (int i = 0; i < MAX_CLIENTS; i++)
-    {
-        if (ws->client_socket[i] == 0 || ws->ws_client_socket[i] == 0) continue;
-        send(ws->client_socket[i], header, moded, 0); // for websocket header
-        send(ws->client_socket[i], data1, data1Size, 0); // for websocket data 1
-        send(ws->client_socket[i], data2, data2Size, 0); // for websocket data 2
+
+    struct iovec iov[3];
+    iov[0].iov_base = header;
+    iov[0].iov_len  = headerLen;
+    iov[1].iov_base = (void*)data1;
+    iov[1].iov_len  = data1Size;
+    iov[2].iov_base = (void*)data2;
+    iov[2].iov_len  = data2Size;
+
+    if (sid != -1) {
+        ssize_t expected = headerLen + payloadLen;
+        ssize_t n = writev(ws->client_socket[sid], iov, 3);
+        if(n != expected){
+            close(ws->client_socket[sid]);
+            ws->client_socket[sid] = 0;
+            ws->ws_client_socket[sid] = 0;
+        }
+    } else {
+        for (int i=0; i<MAX_CLIENTS; i++) {
+            if (ws->client_socket[i] == 0 || ws->ws_client_socket[i] == 0) continue;
+            ssize_t expected = headerLen + payloadLen;
+            ssize_t n = writev(ws->client_socket[i], iov, 3);
+            if(n != expected){
+                close(ws->client_socket[i]);
+                ws->client_socket[i] = 0;
+                ws->ws_client_socket[i] = 0;
+            }
+        }
     }
 }
+
 
 
 void ws_sendText(Websocket *ws, char *text, int sid) {
@@ -212,6 +225,35 @@ int strcomncase_(char *text, const char *pattern, int start, int end) {
             return 0;
     }
     return 1;
+}
+int check_ws_auth(const char *request, int sd);
+int check_ws_auth(const char *request, int sd)
+{
+    return 1;
+    const char *expected = "Basic YWRtaW46";
+    char reqcopy[2048];
+    strncpy(reqcopy, request, sizeof(reqcopy) - 1);
+    reqcopy[sizeof(reqcopy) - 1] = '\0';
+    char *ptr = strtok(reqcopy, "\n");
+    while (ptr != NULL)
+    {
+        size_t plen = strlen(ptr);
+        if (plen > 0 && ptr[plen - 1] == '\r')
+            ptr[plen - 1] = '\0';
+        if (strcomncase_(ptr, "authorization:", 0, 14) == 1)
+        {
+            const char *p = ptr + 15;
+            while (*p == ' ' || *p == '\t')
+                p++;
+            if (strcmp(p, expected) == 0)
+            {
+                return 1;
+            }
+            break;
+        }
+        ptr = strtok(NULL, "\n");
+    }
+    return 0;
 }
 
 void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid)
@@ -233,6 +275,14 @@ void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid)
         if (plen > 0 && ptr[plen-1] == '\r') ptr[plen-1] = '\0';
         if (strcomncase_(ptr, "sec-websocket-key:", 0, 18) == 1)
         {
+            if (!check_ws_auth((const char *)data, sd))
+            {
+                close(sd);
+                ws->client_socket[sid] = 0;
+                ws->ws_client_socket[sid] = 0;
+                if (ws->clients > 0) ws->clients--;
+                return;
+            }
             const char *p = ptr + 18;
             while (*p == ' ' || *p == '\t') p++;
             strncpy(key, p, sizeof(key)-1);
@@ -287,6 +337,23 @@ void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid)
             send(ws->client_socket[sid], header, hlen, 0);
             send(ws->client_socket[sid], ___xwebvnc_libs_assets_vnclogo_PNG, ___xwebvnc_libs_assets_vnclogo_PNG_len, 0);
         } else {
+            // Check websocket auth before upgrade
+            if (!check_ws_auth((const char *)data, sd))
+            {
+                send(sd,
+                "HTTP/1.1 401 Unauthorized\r\n"
+                "WWW-Authenticate: Basic realm=\"PIwebVNC Secure WebSocket\"\r\n"
+                "Content-Length: 0\r\n"
+                "Connection: close\r\n"
+                "\r\n",
+                145,
+                0);
+                close(sd);
+                ws->client_socket[sid] = 0;
+                ws->ws_client_socket[sid] = 0;
+                if (ws->clients > 0) ws->clients--;
+                return;
+            }
             int hlen = sprintf(header,
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/html; charset=utf-8\r\n"
@@ -355,7 +422,7 @@ void ws_connections(Websocket *ws) {
         FD_ZERO(&readfds);
         FD_SET(ws->server_fd, &readfds);
         max_sd = ws->server_fd;
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < MAX_CLIENTS; i++)
         {
             int sd = ws->client_socket[i];
             if (sd > 0)
@@ -384,15 +451,16 @@ void ws_connections(Websocket *ws) {
         {
             if ((new_socket = accept(ws->server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
             {
-                perror("accept");
-                exit(EXIT_FAILURE);
+                continue;
             }
+            int flags = fcntl(ws->server_fd,F_GETFL,0);
+            fcntl(ws->server_fd,F_SETFL,flags | O_NONBLOCK);
             ws->ready = 1;
             bool isAccespted = false;
             ErrorF("[WsocVNC] > LOG: New Connection : Client_No [%d] -> socket_fd=%d, ipAddr=%s, Port=%d\n", ws->clients, new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < MAX_CLIENTS; i++)
             {
-                if (ws->client_socket[i] == 0 && ws->clients < 10)
+                if (ws->client_socket[i] == 0 && ws->clients < MAX_CLIENTS)
                 {
                     ws->client_socket[i] = new_socket;
                     ws->clients++;
@@ -410,7 +478,7 @@ void ws_connections(Websocket *ws) {
         }
         else
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < MAX_CLIENTS; i++)
             {
                 if (ws->client_socket[i] == 0)
                     continue;

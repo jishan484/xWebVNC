@@ -1,20 +1,22 @@
 #ifndef WEBVNC
 #define WEBVNC
 #include "screenint.h"
-#define MAX_CLIENTS 30
+#define MAX_CLIENTS 10
 
 
 #include <stdbool.h>
 
 // variables
 typedef struct Rect Rect;
-typedef struct XScreenConf XScreenConf;
+extern int app_audio_active;
 extern int app_output_quality;
 extern int app_running_indicator;
 typedef struct Websocket Websocket;
 extern int XWEBVNC_http_server_port;
 extern int force_full_screen_refresh;
+typedef struct XScreenConf XScreenConf;
 typedef struct DamageQueue DamageQueue;
+typedef struct ClientScreenConf ClientScreenConf;
 
 
   //------------------------------------------------//
@@ -24,10 +26,13 @@ typedef struct DamageQueue DamageQueue;
 void XWEBVNC_close(void);
 void XWEBVNC_setup(void);
 void XWEBVNC_cleanup(void);
+void XWEBVNC_create_config(void);
 void XWEBVNC_init(ScreenPtr screen);
 void XWEBVNC_log(const char * message);
 void XWEBVNC_start_app_main_loop(void);
+Bool ResizeWorkProc(ClientPtr client, void *any);
 void XWEBVNC_send_frame(int x, int y, int w, int h);
+int xwebRRSetScreenSize(int w, int h, int wm, int hm);
 void XWEBVNC_log_append(const char * message, int number);
 
 
@@ -75,11 +80,12 @@ void setup_wakeup_pipe(void);
 void XWEBVNC_init_input(void);
 void cleanup_wakeup_pipe(void);
 int  lookup_keycode(KeySym sym);
-void input_init(Websocket * gws);
 void process_mouse_move(int x, int y);
 void add_mapping(long sym, int keycode);
+int resizeScreen(int width, int height);
 void process_mouse_scroll(int direction);
 Atom XWEBVNC_get_pointer_sprite_name(void);
+void input_init(Websocket * gws, int w, int h);
 void process_key_press(int keycode, int is_pressed);
 void process_client_Input(char *data, uint64_t len, int clientSD);
 int  buildstr(char *buff, const char *prefix, int val);
@@ -104,6 +110,11 @@ void screen_pix_config(ScreenPtr pScreen, XScreenConf * screenConf);
 void getSubImage( int x, int y,int rect_w, int rect_h, XScreenConf * screenConf, char * temp_buffer);
 
 
+  //------------------------------------------------//
+ //              VNC Audio Processor               //
+//------------------------------------------------//
+void* audioLoop(void *arg);
+
 
   //------------------------------------------------//
  //               VNC Type Definitions             //
@@ -123,10 +134,10 @@ typedef struct {
 } RectQueue;
 
 struct DamageQueue{
-    int max_screen_width;
-    int max_screen_height;
     RectQueue queue;
     pthread_mutex_t mtx;
+    int max_screen_width;
+    int max_screen_height;
 } ;
 
 struct Websocket {
@@ -147,6 +158,12 @@ struct XScreenConf {
   int stride;
   int bit_per_pixel;
   unsigned char * buffer_ptr;
+};
+
+struct ClientScreenConf {
+  int isSet;
+  int max_allowed_width;
+  int max_allowed_height;
 };
 
 
