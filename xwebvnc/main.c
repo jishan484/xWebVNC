@@ -111,6 +111,7 @@ void XWEBVNC_init(ScreenPtr screen) {
 */
 void XWEBVNC_cleanup(void) {
   // nothing to do for now
+  force_full_screen_refresh = 0;
   XWEBVNC_log("X Server Session restarted");
 }
 
