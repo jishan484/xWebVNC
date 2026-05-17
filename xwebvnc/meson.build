@@ -19,8 +19,6 @@ jpeg_dep = dependency('libjpeg', static: true)
 lz4_dep = dependency('liblz4', static: true)
 alsa_dep = dependency('alsa', static: true)
 pulse_dep = dependency('libpulse', static: true)
-opus_dep = dependency('opus', static: false, required: true)
-ogg_dep = dependency('ogg', static: true, required: true)
 
 
 # Link libxserver_dix using link_with
@@ -30,6 +28,6 @@ libxserver_xwebvnc = static_library(
     
     include_directories: [xwebvnc_inc, inc],
     link_with: [libxserver_dix],
-    dependencies: [common_dep, openssl_dep, jpeg_dep, lz4_dep, alsa_dep, pulse_dep, opus_dep, ogg_dep],
+    dependencies: [common_dep, openssl_dep, jpeg_dep, lz4_dep, alsa_dep, pulse_dep],
     install: false
 )

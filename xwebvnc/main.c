@@ -188,8 +188,7 @@ vnc send frame method, call to send frame of size x,y,w,h
 */
 void XWEBVNC_send_frame(int x, int y, int width, int height) {
   app_busy_indicator = 1;
-  if(!app_running_indicator) printf("app closed but\n");
-  if(!app_running_indicator) return;
+  if(!app_running_indicator || (width == 0) || (height == 0)) return;
   if (force_full_screen_refresh) {
     x = 0;
     y = 0;
