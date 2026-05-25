@@ -48,6 +48,7 @@ OR PERFORMANCE OF THIS SOFTWARE.
 
 */
 
+#include <X11/Xdefs.h>
 #include <dix-config.h>
 
 #ifdef __CYGWIN__
@@ -201,6 +202,7 @@ static clockid_t clockid;
 #endif
 
 int xwebVNCport = 8080;
+int loginRequired = 0;
 
 OsSigHandlerPtr
 OsSignal(int sig, OsSigHandlerPtr handler)
@@ -408,6 +410,7 @@ UseMsg(void)
     ddxUseMsg();
     ErrorF("-web #                 XwebVNC http port (default 8080) [only http]\n");
     ErrorF("-http #                XwebVNC http port (default 8080) same as -web # (any one of these can be used)\n");
+    ErrorF("-login #               XwebVNC will ask basic auth to login with current linux user credential (username: current linux user , password: linux password)");
 }
 
 /*  This function performs a rudimentary sanity check
@@ -527,6 +530,9 @@ ProcessCommandLine(int argc, char *argv[])
             }
             else
                  UseMsg();
+        }
+        else if(strcmp( argv[i], "-login") == 0) {
+            loginRequired = 1;
         }
         else if (strcmp(argv[i], "-a") == 0) {
             if (++i < argc)

@@ -150,6 +150,7 @@ dix_main(int argc, char *argv[], char *envp[])
     alwaysCheckForInput[0] = 0;
     alwaysCheckForInput[1] = 1;
     XWEBVNC_http_server_port = xwebVNCport;
+    isLoginRequired = loginRequired;
     XWEBVNC_setup();
     while (1) {
         serverGeneration++;

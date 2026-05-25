@@ -111,7 +111,6 @@ void XWEBVNC_init(ScreenPtr screen) {
 */
 void XWEBVNC_cleanup(void) {
   // nothing to do for now
-  force_full_screen_refresh = 0;
   XWEBVNC_log("X Server Session restarted");
 }
 
@@ -291,7 +290,6 @@ void myDamageReport(DamagePtr pDamage, RegionPtr pRegion, void *closure) {
 //      External    //
 //-----------------//
 Bool ResizeWorkProc(ClientPtr client, void *any) {
-  force_full_screen_refresh = 1;
   if (global_screen_pointer == 0)
     return 0;
   int width = screenResizeRequest[0];
@@ -301,6 +299,8 @@ Bool ResizeWorkProc(ClientPtr client, void *any) {
   int mmHeight = (height * global_screen_pointer->mmHeight) /
                  global_screen_pointer->height;
   RRScreenSizeSet(global_screen_pointer, width, height, mmWidth, mmHeight);
+  XWEBVNC_create_config();
+  ws_sendText(global_websocket, vnc_App_config, -1);
   return 1;
 }
 

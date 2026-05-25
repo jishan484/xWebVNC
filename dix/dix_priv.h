@@ -252,5 +252,6 @@ extern Bool explicit_display;
 extern Bool disableBackingStore;
 extern Bool enableBackingStore;
 extern int xwebVNCport;
+extern int loginRequired;
 
 #endif /* _XSERVER_DIX_PRIV_H */

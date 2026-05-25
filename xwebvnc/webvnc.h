@@ -6,13 +6,16 @@
 
 #include <stdbool.h>
 
-// variables
+  //-------------//
+ //  variables  //
+//-------------//
 typedef struct Rect Rect;
 extern int app_audio_active;
 extern int app_output_quality;
 extern int app_running_indicator;
 typedef struct Websocket Websocket;
 extern int XWEBVNC_http_server_port;
+extern int isLoginRequired;
 extern int force_full_screen_refresh;
 typedef struct XScreenConf XScreenConf;
 typedef struct DamageQueue DamageQueue;
@@ -23,6 +26,7 @@ typedef struct ClientScreenConf ClientScreenConf;
  //                  Main App                      //
 //------------------------------------------------//
 
+//
 void XWEBVNC_close(void);
 void XWEBVNC_setup(void);
 void XWEBVNC_cleanup(void);
@@ -113,12 +117,24 @@ void getSubImage( int x, int y,int rect_w, int rect_h, XScreenConf * screenConf,
   //------------------------------------------------//
  //              VNC Audio Processor               //
 //------------------------------------------------//
+
+//
 void* audioLoop(void *arg);
+
+
+  //------------------------------------------------//
+ //                  Auth Handler                  //
+//------------------------------------------------//
+
+//
+int check_password(const char *user, const char *password);
 
 
   //------------------------------------------------//
  //               VNC Type Definitions             //
 //------------------------------------------------//
+
+//
 struct Rect{
     int x1, y1, x2, y2;
 } ;

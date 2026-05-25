@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/uio.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -9,6 +10,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/select.h>
+#include "libs/base64.h"
 #include "libs/sha1.h"
 #include "libs/htmlPage.h"
 #include "libs/logo.h"
@@ -229,8 +231,7 @@ int strcomncase_(char *text, const char *pattern, int start, int end) {
 int check_ws_auth(const char *request, int sd);
 int check_ws_auth(const char *request, int sd)
 {
-    return 1;
-    const char *expected = "Basic YWRtaW46";
+    if(!isLoginRequired) return 1;
     char reqcopy[2048];
     strncpy(reqcopy, request, sizeof(reqcopy) - 1);
     reqcopy[sizeof(reqcopy) - 1] = '\0';
@@ -245,9 +246,21 @@ int check_ws_auth(const char *request, int sd)
             const char *p = ptr + 15;
             while (*p == ' ' || *p == '\t')
                 p++;
-            if (strcmp(p, expected) == 0)
-            {
-                return 1;
+            if(p[0] == 'B' && p[1] == 'a' && p[2] == 's' && p[3] == 'i' && p[4] == 'c'){
+                BYTE_ARRAY auth_info = base64_decode(p+6);
+                auth_info.data[auth_info.size] = '\0';
+                char *decoded = (char *)auth_info.data;
+                char *colon = strchr(decoded, ':');
+                 if (!colon) {
+                    free(auth_info.data);
+                    return 0;
+                }
+                *colon = '\0';
+                char *user = decoded;
+                char *password = colon + 1;
+                int ok = check_password(user, password);
+                free(auth_info.data);
+                return ok;
             }
             break;
         }
