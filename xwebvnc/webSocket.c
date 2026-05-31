@@ -349,6 +349,45 @@ void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid)
                 "\r\n");
             send(ws->client_socket[sid], header, hlen, 0);
             send(ws->client_socket[sid], ___xwebvnc_libs_assets_vnclogo_PNG, ___xwebvnc_libs_assets_vnclogo_PNG_len, 0);
+        } 
+        else if(strcomncase_((char*) data, "GET /version", 0, 12)) {
+            char body[2048];
+            int body_len = snprintf(body, sizeof(body),
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head>"
+                "<title>PIwebVNC Status</title>"
+                "<style>"
+                "body{font-family:Arial,sans-serif;margin:40px;}"
+                "table{border-collapse:collapse;margin:auto;}"
+                "th,td{border:1px solid #ccc;padding:8px 16px;}"
+                "th{background:#f5f5f5;}"
+                "h2{text-align:center;}"
+                "</style>"
+                "</head>"
+                "<body>"
+                "<h2>PIwebVNC Information</h2>"
+                "<table>"
+                "<tr><th>Field</th><th>Value</th></tr>"
+                "<tr><td>Version</td><td>%s</td></tr>"
+                "<tr><td>Release Type</td><td>%s</td></tr>"
+                "<tr><td>Notice</td><td>%s</td></tr>"
+                "<tr><td>Bug Fixes</td><td>%s</td></tr>"
+                "</table>"
+                "</body>"
+                "</html>",
+                VERSION, TYPE, NOTICE, BUGFIXES);
+            int hlen = snprintf(header, sizeof(header),
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/html; charset=utf-8\r\n"
+                "Content-Length: %d\r\n"
+                "Cache-Control: max-age=14400\r\n"
+                "Connection: close\r\n"
+                "Server: PIwebVNC\r\n"
+                "\r\n", body_len);
+
+            send(ws->client_socket[sid], header, hlen, 0);
+            send(ws->client_socket[sid], body, body_len, 0);
         } else {
             // Check websocket auth before upgrade
             if (!check_ws_auth((const char *)data, sd))
