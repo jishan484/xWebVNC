@@ -137,8 +137,8 @@ jobs:
           name: Xorg-x86_debian_10
           path: build/hw/xfree86/Xorg
 
-  build_arm64:
-    runs-on: self-hosted
+  build_arm64_debian_12:
+    runs-on: [self-hosted, arm]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -147,9 +147,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build
-          key: ${{ runner.os }}-meson-build-${{ hashFiles('**/meson.build') }}
+          key: ${{ runner.os }}-12-meson-build-${{ hashFiles('**/meson.build') }}
           restore-keys: |
-            ${{ runner.os }}-meson-build-
+            ${{ runner.os }}-12-meson-build-
 
       - name: Build project
         run: |
@@ -165,12 +165,50 @@ jobs:
         if: ${{ hashFiles('build/hw/vfb/Xvfb') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: Xvfb-arm64
+          name: Xvfb_arm64_debian_12
           path: build/hw/vfb/Xvfb
 
       - name: Upload Xorg (if present)
         if: ${{ hashFiles('build/hw/xfree86/Xorg') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: Xorg-arm64
+          name: Xorg_arm64_debian_12
+          path: build/hw/xfree86/Xorg
+
+  build_arm64_debian_11:
+    runs-on: [self-hosted, arm64_d11]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Restore Meson build cache
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: ${{ runner.os }}-11-meson-build-${{ hashFiles('**/meson.build') }}
+          restore-keys: |
+            ${{ runner.os }}-11-meson-build-
+
+      - name: Build project
+        run: |
+          meson setup build
+          meson compile -C build
+
+      - name: Show binary info
+        run: |
+          file build/hw/vfb/Xvfb || true
+          file build/hw/xfree86/Xorg || true
+
+      - name: Upload Xvfb (if present)
+        if: ${{ hashFiles('build/hw/vfb/Xvfb') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xvfb_arm64_debian_12
+          path: build/hw/vfb/Xvfb
+
+      - name: Upload Xorg (if present)
+        if: ${{ hashFiles('build/hw/xfree86/Xorg') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xorg_arm64_debian_12
           path: build/hw/xfree86/Xorg
