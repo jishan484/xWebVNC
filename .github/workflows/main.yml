@@ -2,8 +2,7 @@ name: Build Xvfb (x86_64 + ARM64)
 
 on:
   push:
-    tags:
-      - "v-*"           # Runs when pushing a tag like v-1.0.0
+    branches: [main]         # Runs when pushing to main
   workflow_dispatch:   # Manual trigger
 
 jobs:
