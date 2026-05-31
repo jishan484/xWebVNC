@@ -1,0 +1,69 @@
+name: Build Xvfb debian OLD test
+
+on:
+  push:
+    tags:
+      - "v-*"           # Runs when pushing a tag like v-1.0.0
+  workflow_dispatch:   # Manual trigger
+
+jobs:
+  build_x86_legacy:
+    runs-on: ubuntu-latest
+  
+    strategy:
+      fail-fast: false
+      matrix:
+        debian: [9, 10, 11]
+  
+    container:
+      image: debian:${{ matrix.debian }}
+  
+    steps:
+      - uses: actions/checkout@v4
+  
+      - name: Configure old repositories
+        if: matrix.debian == 9
+        run: |
+          cat > /etc/apt/sources.list <<EOF
+          deb http://archive.debian.org/debian stretch main
+          deb http://archive.debian.org/debian-security stretch/updates main
+          EOF
+  
+          echo 'Acquire::Check-Valid-Until "false";' \
+            > /etc/apt/apt.conf.d/99archive
+  
+      - name: Install dependencies
+        run: |
+          apt-get update
+  
+          apt-get install -y \
+            ninja-build \
+            pkg-config \
+            python3 \
+            python3-pip \
+            build-essential \
+            git \
+            x11-xkb-utils \
+            libjpeg-dev
+  
+          apt-get install -y meson || true
+  
+      - name: Build project
+        run: |
+          bash .gitlab-ci/debian-install.sh
+          meson setup build
+          meson compile -C build
+        continue-on-error: true
+  
+      - name: Upload XVFB
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xvfb_x86_debian_${{ matrix.debian }}
+          path: build/hw/vfb/Xvfb
+      - name: make
+        run: make
+      - name: make check
+        run: make check
+      - name: make distcheck
+        run: make distcheck
