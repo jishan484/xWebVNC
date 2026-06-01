@@ -79,7 +79,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG=$(gh api repos/${{ github.repository }}/releases/latest --jq .tag_name)
           for zip_file in artifacts/*.zip; do
             echo "Uploading $zip_file..."
             gh release upload "$TAG" "$zip_file" --clobber
