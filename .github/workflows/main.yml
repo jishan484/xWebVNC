@@ -5,6 +5,9 @@ on:
     branches: [main]         # Runs when pushing to main
   workflow_dispatch:   # Manual trigger
 
+permissions:
+  contents: write
+
 jobs:
   build_x86:
     runs-on: ubuntu-latest
