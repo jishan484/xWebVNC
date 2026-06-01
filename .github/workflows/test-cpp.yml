@@ -1,10 +1,128 @@
-name: Test Xvfb
+name: Test Xvfb Binary
 
 on:
   workflow_dispatch:
 
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        debian:
+          - 10
+          - 11
+          - 12
+          - 13
+
     runs-on: ubuntu-latest
+
+    container:
+      image: debian:${{ matrix.debian }}
+
     steps:
-      - run: echo Hello
+      - name: Fix Debian 10 repositories
+        if: matrix.debian == '10'
+        run: |
+          sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list
+          sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list
+
+          echo 'Acquire::Check-Valid-Until "false";' \
+            > /etc/apt/apt.conf.d/99no-check-valid
+
+      - name: Install basic tools
+        run: |
+          apt-get update
+          apt-get install -y \
+            curl \
+            unzip \
+            file \
+            procps
+
+      - name: Install GitHub CLI
+        run: |
+          apt-get install -y gh
+
+      - name: Download latest Xvfb artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh run list \
+            --workflow "Build Xvfb (x86_64 + ARM64)" \
+            --branch main \
+            --json databaseId,status,conclusion \
+            -q '.[] | select(.status=="completed" and .conclusion=="success") | .databaseId' \
+            | head -n1)
+
+          echo "Using run: $RUN_ID"
+
+          mkdir artifacts
+          gh run download "$RUN_ID" \
+            --name Xvfb_x86 \
+            --dir artifacts
+
+      - name: Locate binary
+        run: |
+          find artifacts -type f
+
+          XVFB=$(find artifacts -type f | head -n1)
+
+          chmod +x "$XVFB"
+
+          echo "XVFB_BIN=$XVFB" >> $GITHUB_ENV
+
+      - name: Show binary information
+        run: |
+          file "$XVFB_BIN"
+
+      - name: Show library dependencies
+        run: |
+          ldd "$XVFB_BIN" || true
+
+      #################################################################
+      # Add dependency installation here if required
+      #################################################################
+
+      - name: Install additional dependencies
+        run: |
+          echo "Add your apt packages here"
+
+      #################################################################
+      # Basic startup test
+      #################################################################
+
+      - name: Start Xvfb
+        run: |
+          "$XVFB_BIN" :99 -screen 0 1024x768x24 &
+          echo $! > xvfb.pid
+
+          sleep 5
+
+      - name: Verify process is alive
+        run: |
+          PID=$(cat xvfb.pid)
+
+          if ! kill -0 "$PID" 2>/dev/null; then
+            echo "Xvfb exited unexpectedly"
+            exit 1
+          fi
+
+          echo "Xvfb is running"
+
+      - name: Verify X socket
+        run: |
+          ls -la /tmp/.X11-unix || true
+
+          test -S /tmp/.X11-unix/X99
+
+      #################################################################
+      # Add custom tests here
+      #################################################################
+
+      - name: Custom tests
+        run: |
+          echo "Put xdpyinfo, xset, xclip, web bridge tests, etc. here"
+
+      - name: Stop Xvfb
+        if: always()
+        run: |
+          kill $(cat xvfb.pid) || true
