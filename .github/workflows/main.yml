@@ -92,3 +92,84 @@ jobs:
         with:
           name: Xorg-arm64
           path: build/hw/xfree86/Xorg
+  
+  release:
+    needs:
+      - build_x86
+      - build_arm64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install -y gh jq
+
+      - name: Verify GH CLI Authentication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh auth status || echo "GH CLI will use GH_TOKEN from environment"
+
+      - name: Get latest successful build run ID
+        id: get_run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_id=$(gh run list \
+            --workflow "Build Xvfb (x86_64 + ARM64)" \
+            --branch main \
+            --json databaseId,status,conclusion \
+            -q '.[] | select(.status=="completed" and .conclusion=="success") | .databaseId' | head -n1)
+
+          if [ -z "$run_id" ]; then
+            echo "No successful build found" && exit 1
+          fi
+
+          echo "Found build run ID: $run_id"
+          echo "run_id=$run_id" >> $GITHUB_OUTPUT
+
+      - name: Download artifacts from latest successful build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir artifacts
+          gh run download ${{ steps.get_run.outputs.run_id }} --dir artifacts
+          echo "Downloaded artifacts:"
+          ls -R artifacts
+
+      - name: Zip top-level artifact folders
+        run: |
+          cd artifacts
+          for folder in */ ; do
+            folder_name=$(basename "$folder")
+            zip -r "${folder_name}.zip" "$folder"
+          done
+          echo "Zipped artifacts:"
+          ls -lh *.zip
+
+      - name: Create or update release
+        id: create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          # Check if release already exists
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release for tag $TAG already exists, updating..."
+          else
+            echo "Creating new release for tag $TAG..."
+            gh release create "$TAG" --title "Release $TAG" --notes "Automated release for $TAG"
+          fi
+
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          for zip_file in artifacts/*.zip; do
+            echo "Uploading $zip_file..."
+            gh release upload "$TAG" "$zip_file" --clobber
+          done

@@ -1,10 +1,7 @@
-name: Publish latest release
+name: Publish latest release manually
 
 on:
-  workflow_run:
-    workflows: ["Build Xvfb (x86_64 + ARM64)"]   # Name of the first workflow
-    types:
-      - completed                  # triggers after first workflow finishes
+  workflow_dispatch:   #only manual trigger
 
 permissions:
   contents: write

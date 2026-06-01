@@ -136,7 +136,7 @@ option('sparkle-public-edkey', type: 'string',
 option('xpbproxy', type: 'boolean', value: false,
         description: 'Build a standalone X pasteboard proxy')
 
-option('libunwind', type: 'boolean', value: false,
+option('libunwind', type: 'boolean', value: true,
         description: 'Use libunwind for backtrace reporting')
 
 option('xwayland-path', type: 'string', description: 'Directory containing Xwayland executable')
