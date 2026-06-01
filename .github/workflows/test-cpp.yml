@@ -29,20 +29,42 @@ jobs:
           echo 'Acquire::Check-Valid-Until "false";' \
             > /etc/apt/apt.conf.d/99no-check-valid
 
-      - name: Install basic tools
+      - name: Install runtime dependencies
         run: |
           apt-get update
-          apt-get install -y \
+
+          apt-get install --no-install-recommends -y \
             curl \
             unzip \
             file \
-            procps
+            procps \
+            ca-certificates \
+            libxfont2 \
+            x11-xkb-utils \
+            x11-xserver-utils \
+            libasound2 \
+            libpulse0 \
+            libpam0g \
+            libpam-runtime \
+            git
 
       - name: Install GitHub CLI
         run: |
+          apt-get install -y curl gnupg
+
+          mkdir -p /usr/share/keyrings
+
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            | gpg --dearmor \
+            > /usr/share/keyrings/githubcli-archive-keyring.gpg
+
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+            > /etc/apt/sources.list.d/github-cli.list
+
+          apt-get update
           apt-get install -y gh
 
-      - name: Download latest Xvfb artifact
+      - name: Download latest successful build
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -56,39 +78,26 @@ jobs:
           echo "Using run: $RUN_ID"
 
           mkdir artifacts
+
           gh run download "$RUN_ID" \
             --name Xvfb_x86 \
             --dir artifacts
 
       - name: Locate binary
         run: |
-          find artifacts -type f
-
           XVFB=$(find artifacts -type f | head -n1)
+
+          test -n "$XVFB"
 
           chmod +x "$XVFB"
 
-          echo "XVFB_BIN=$XVFB" >> $GITHUB_ENV
+          echo "XVFB_BIN=$XVFB" >> "$GITHUB_ENV"
 
-      - name: Show binary information
-        run: |
-          file "$XVFB_BIN"
+          file "$XVFB"
 
-      - name: Show library dependencies
+      - name: Show dependencies
         run: |
           ldd "$XVFB_BIN" || true
-
-      #################################################################
-      # Add dependency installation here if required
-      #################################################################
-
-      - name: Install additional dependencies
-        run: |
-          echo "Add your apt packages here"
-
-      #################################################################
-      # Basic startup test
-      #################################################################
 
       - name: Start Xvfb
         run: |
@@ -101,26 +110,29 @@ jobs:
         run: |
           PID=$(cat xvfb.pid)
 
-          if ! kill -0 "$PID" 2>/dev/null; then
-            echo "Xvfb exited unexpectedly"
-            exit 1
-          fi
+          kill -0 "$PID"
 
-          echo "Xvfb is running"
+          echo "Process is alive"
 
-      - name: Verify X socket
+      - name: Verify X socket exists
         run: |
-          ls -la /tmp/.X11-unix || true
-
           test -S /tmp/.X11-unix/X99
 
-      #################################################################
-      # Add custom tests here
-      #################################################################
+          echo "Socket exists"
 
-      - name: Custom tests
+      - name: Verify process still alive
         run: |
-          echo "Put xdpyinfo, xset, xclip, web bridge tests, etc. here"
+          PID=$(cat xvfb.pid)
+
+          kill -0 "$PID"
+
+          echo "Xvfb survived startup"
+
+      - name: Success
+        run: |
+          echo "=================================================="
+          echo "PASS: Debian ${{ matrix.debian }}"
+          echo "=================================================="
 
       - name: Stop Xvfb
         if: always()
