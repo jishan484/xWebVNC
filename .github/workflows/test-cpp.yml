@@ -64,6 +64,9 @@ jobs:
           apt-get update
           apt-get install -y gh
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download latest successful build
         env:
           GH_TOKEN: ${{ github.token }}
