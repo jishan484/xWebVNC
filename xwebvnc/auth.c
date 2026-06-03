@@ -41,7 +41,7 @@ int check_password(const char *user, const char *password) {
     if (pw) {
         //if current user resolved , then match else No big deal
         if (strcmp(pw->pw_name, user) != 0) {
-            return 0; /* mismatch between running user and provided username */
+            XWEBVNC_log_msg("Login request came for user:", user);
         }
     }
 

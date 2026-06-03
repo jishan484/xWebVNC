@@ -43,6 +43,7 @@ Bool ResizeWorkProc(ClientPtr client, void *any);
 void XWEBVNC_send_frame(int x, int y, int w, int h);
 int xwebRRSetScreenSize(int w, int h, int wm, int hm);
 void XWEBVNC_log_append(const char * message, int number);
+void XWEBVNC_log_msg(const char *message, const char *message2);
 
 
   //------------------------------------------------//

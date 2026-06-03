@@ -314,6 +314,7 @@ int resizeScreen(int width, int height) {
 // logs for XWebVNC //
 //------------------//
 void XWEBVNC_log(const char *message) { ErrorF("[XwebVNC] > %s\n", message); }
+void XWEBVNC_log_msg(const char *message, const char *message2) { ErrorF("[XwebVNC] > %s %s\n", message, message2); }
 void XWEBVNC_log_append(const char *message, int number) {
   ErrorF("[XwebVNC] > %s%d\n", message, number);
 }
