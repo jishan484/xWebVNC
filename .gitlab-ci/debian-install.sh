@@ -134,7 +134,7 @@ apt-get install -y --allow-downgrades \
 	xtrans-dev \
 	xutils-dev xxd liblz4-dev libssl-dev libjpeg62-turbo-dev libjpeg-dev libasound2-dev libpulse-dev libpam0g-dev
 
-.gitlab-ci/cross-prereqs-build.sh i686-w64-mingw32
+# .gitlab-ci/cross-prereqs-build.sh i686-w64-mingw32
 
 cd /root
 
