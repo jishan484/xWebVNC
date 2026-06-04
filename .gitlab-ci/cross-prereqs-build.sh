@@ -36,7 +36,7 @@ build() {
     fi
 
     pushd ${name}
-    NOCONFIGURE=1 ./autogen.sh || ./.bootstrap
+    NOCONFIGURE=1 ./autogen.sh || ./.bootstrap || true
     ./configure ${config} --host=${HOST} --prefix= --with-sysroot=/usr/${HOST}/
     make -j$(nproc)
     DESTDIR=/usr/${HOST} make install
