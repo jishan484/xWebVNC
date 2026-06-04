@@ -36,7 +36,7 @@ build() {
     fi
 
     pushd ${name}
-    NOCONFIGURE=1 ./autogen.sh || ./.bootstrap || true
+    NOCONFIGURE=1 ./autogen.sh || ./.bootstrap
     ./configure ${config} --host=${HOST} --prefix= --with-sysroot=/usr/${HOST}/
     make -j$(nproc)
     DESTDIR=/usr/${HOST} make install
@@ -45,7 +45,7 @@ build() {
     rm -rf ${OLDPWD}
 }
 
-build 'https://gitlab.freedesktop.org/pixman/pixman.git' 'pixman-0.38.4'
+build 'https://gitlab.freedesktop.org/pixman/pixman.git' 'pixman-0.40.0'
 build 'https://gitlab.freedesktop.org/xorg/lib/pthread-stubs.git' '0.4'
 # we can't use the xorgproto pkgconfig files from /usr/share/pkgconfig, because
 # these would add -I/usr/include to CFLAGS, which breaks cross-compilation
