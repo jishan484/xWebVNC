@@ -40,8 +40,6 @@ for pkg in "${deps[@]}"; do
 done
 
 
-#!/bin/bash
-set -e
 
 # Release version variable
 release="v1.0.0-stable"
