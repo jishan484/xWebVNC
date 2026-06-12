@@ -24,6 +24,8 @@ deps=(
   libbrotli1
   libx11-6
   libxcb1
+  x11-xkb-utils
+  xkb-data
   whiptail
 )
 
