@@ -7,7 +7,7 @@
 ## 💾 Install and setup
 run the below command
 ```bash
-curl -s https://raw.githubusercontent.com/jishan484/xWebVNC/main/install.sh | bash
+curl -s https://raw.githubusercontent.com/jishan484/xWebVNC/main/install.sh | sudo bash
 ```
 > This will install the required dependencies and set up Xvfb. Once installed, you can start your desktop manager or any GUI application on the designated DISPLAY number.
 > If the authentication option is chosen during setup, you must log in using your **Linux username and password**. At present, the system allows any Linux user, including root, to log in.
