@@ -284,8 +284,7 @@ dix_main(int argc, char *argv[], char *envp[])
 
         InputThreadInit();
 
-        for (i = 0; i < screenInfo.numScreens; i++)
-            XWEBVNC_init(screenInfo.screens[i]);
+        XWEBVNC_init(screenInfo.screens[0]);
 
         Dispatch();
 

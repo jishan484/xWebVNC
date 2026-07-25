@@ -390,15 +390,16 @@ void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid)
             send(ws->client_socket[sid], body, body_len, 0);
         } else {
             // Check websocket auth before upgrade
-            if (!check_ws_auth((const char *)data, sd))
-            {
-                send(sd,
-                "HTTP/1.1 401 Unauthorized\r\n"
+            char * res_p = "HTTP/1.1 401 Unauthorized\r\n"
                 "WWW-Authenticate: Basic realm=\"PIwebVNC Secure WebSocket\"\r\n"
                 "Content-Length: 0\r\n"
                 "Connection: close\r\n"
-                "\r\n",
-                145,
+                "\r\n";
+            if (!check_ws_auth((const char *)data, sd))
+            {
+                send(sd,
+                res_p,
+                strlen(res_p),
                 0);
                 close(sd);
                 ws->client_socket[sid] = 0;
