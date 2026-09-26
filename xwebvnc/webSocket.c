@@ -13,6 +13,7 @@
 #include "libs/base64.h"
 #include "libs/sha1.h"
 #include "libs/htmlPage.h"
+#include "libs/loginPage.h"
 #include "libs/logo.h"
 #include "webvnc.h"
 
@@ -229,9 +230,12 @@ int strcomncase_(char *text, const char *pattern, int start, int end) {
     return 1;
 }
 int check_ws_auth(const char *request, int sd);
+
 int check_ws_auth(const char *request, int sd)
 {
-    if(!isLoginRequired) return 1;
+    (void)sd;
+    if (!isLoginRequired)
+        return 1;
     char reqcopy[2048];
     strncpy(reqcopy, request, sizeof(reqcopy) - 1);
     reqcopy[sizeof(reqcopy) - 1] = '\0';
@@ -241,28 +245,114 @@ int check_ws_auth(const char *request, int sd)
         size_t plen = strlen(ptr);
         if (plen > 0 && ptr[plen - 1] == '\r')
             ptr[plen - 1] = '\0';
-        if (strcomncase_(ptr, "authorization:", 0, 14) == 1)
+        if (strcomncase_(ptr, "cookie:", 0, 7) == 1)
         {
-            const char *p = ptr + 15;
+            char *p = ptr + 7;
             while (*p == ' ' || *p == '\t')
                 p++;
-            if(p[0] == 'B' && p[1] == 'a' && p[2] == 's' && p[3] == 'i' && p[4] == 'c'){
-                BYTE_ARRAY auth_info = base64_decode(p+6);
-                auth_info.data[auth_info.size] = '\0';
-                char *decoded = (char *)auth_info.data;
-                char *colon = strchr(decoded, ':');
-                 if (!colon) {
+            char *auth = strstr(p, "V_AUTH=");
+            if (auth != NULL)
+            {
+                if (auth != p &&
+                    auth[-1] != ';' &&
+                    auth[-1] != ' ' &&
+                    auth[-1] != '\t')
+                {
+                    ptr = strtok(NULL, "\n");
+                    continue;
+                }
+                auth += 7;
+                char *end = strchr(auth, ';');
+                size_t auth_len;
+                if (end != NULL)
+                    auth_len = (size_t)(end - auth);
+                else
+                    auth_len = strlen(auth);
+                if (auth_len == 0)
+                    return 0;
+                char encoded[2048];
+                if (auth_len >= sizeof(encoded))
+                    return 0;
+                memcpy(encoded, auth, auth_len);
+                encoded[auth_len] = '\0';
+                char *src = encoded;
+                char *dst = encoded;
+
+                while (*src)
+                {
+                    if (*src == '%' &&
+                        src[1] != '\0' &&
+                        src[2] != '\0')
+                    {
+                        char h1 = src[1];
+                        char h2 = src[2];
+
+                        int v1 =
+                            (h1 >= '0' && h1 <= '9') ? h1 - '0' :
+                            (h1 >= 'A' && h1 <= 'F') ? h1 - 'A' + 10 :
+                            (h1 >= 'a' && h1 <= 'f') ? h1 - 'a' + 10 :
+                            -1;
+
+                        int v2 =
+                            (h2 >= '0' && h2 <= '9') ? h2 - '0' :
+                            (h2 >= 'A' && h2 <= 'F') ? h2 - 'A' + 10 :
+                            (h2 >= 'a' && h2 <= 'f') ? h2 - 'a' + 10 :
+                            -1;
+
+                        if (v1 < 0 || v2 < 0)
+                            return 0;
+
+                        *dst++ = (char)((v1 << 4) | v2);
+
+                        src += 3;
+                    }
+                    else
+                    {
+                        *dst++ = *src++;
+                    }
+                }
+                *dst = '\0';
+                BYTE_ARRAY auth_info = base64_decode(encoded);
+                if (auth_info.data == NULL || auth_info.size == 0)
+                {
+                    if (auth_info.data)
+                        free(auth_info.data);
+
+                    return 0;
+                }
+                unsigned char *decoded_buf =
+                    malloc(auth_info.size + 1);
+                if (decoded_buf == NULL)
+                {
                     free(auth_info.data);
+                    return 0;
+                }
+                memcpy(
+                    decoded_buf,
+                    auth_info.data,
+                    auth_info.size
+                );
+                decoded_buf[auth_info.size] = '\0';
+                free(auth_info.data);
+                char *decoded = (char *)decoded_buf;
+                char *colon = strchr(decoded, ':');
+                if (colon == NULL)
+                {
+                    free(decoded_buf);
                     return 0;
                 }
                 *colon = '\0';
                 char *user = decoded;
                 char *password = colon + 1;
                 int ok = check_password(user, password);
-                free(auth_info.data);
+                memset(
+                    decoded_buf,
+                    0,
+                    auth_info.size + 1
+                );
+                free(decoded_buf);
                 return ok;
             }
-            break;
         }
         ptr = strtok(NULL, "\n");
     }
@@ -389,32 +479,41 @@ void ws_handshake(Websocket *ws, unsigned char *data, int sd, int sid)
             send(ws->client_socket[sid], header, hlen, 0);
             send(ws->client_socket[sid], body, body_len, 0);
         } else {
-            // Check websocket auth before upgrade
-            char * res_p = "HTTP/1.1 401 Unauthorized\r\n"
-                "WWW-Authenticate: Basic realm=\"PIwebVNC Secure WebSocket\"\r\n"
-                "Content-Length: 0\r\n"
-                "Connection: close\r\n"
-                "\r\n";
             if (!check_ws_auth((const char *)data, sd))
             {
-                send(sd,
-                res_p,
-                strlen(res_p),
-                0);
+                int hlen = sprintf(
+                    header,
+                    "HTTP/1.1 401 Unauthorized\r\n"
+                    "Content-Type: text/html; charset=utf-8\r\n"
+                    "Content-Length: %zu\r\n"
+                    "Connection: close\r\n"
+                    "Cache-Control: no-store\r\n"
+                    "\r\n",
+                    (size_t)___xwebvnc_libs_assets_login_html_len
+                );
+                send(ws->client_socket[sid],header,hlen,0);
+                send(ws->client_socket[sid],___xwebvnc_libs_assets_login_html,___xwebvnc_libs_assets_login_html_len,0);
                 close(sd);
                 ws->client_socket[sid] = 0;
                 ws->ws_client_socket[sid] = 0;
-                if (ws->clients > 0) ws->clients--;
+                if (ws->clients > 0)
+                    ws->clients--;
                 return;
             }
-            int hlen = sprintf(header,
+            int hlen = sprintf(
+                header,
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/html; charset=utf-8\r\n"
+                "Content-Length: %zu\r\n"
                 "Server: PIwebVNC (by Jishan)\r\n"
-                "\r\n");
-            send(ws->client_socket[sid], header, hlen, 0);
-            send(ws->client_socket[sid], ___xwebvnc_libs_assets_index_html, ___xwebvnc_libs_assets_index_html_len, 0);
-        }
+                "Connection: close\r\n"
+                "Cache-Control: no-store\r\n"
+                "\r\n",
+                (size_t)___xwebvnc_libs_assets_index_html_len
+            );
+            send(ws->client_socket[sid],header,hlen,0);
+            send(ws->client_socket[sid],___xwebvnc_libs_assets_index_html,___xwebvnc_libs_assets_index_html_len,0);
+        }               
         close(sd);
         ws->client_socket[sid] = 0;
         ws->ws_client_socket[sid] = 0;

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XWebVNC - Login</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Helvetica,
+                Arial,
+                sans-serif;
+            background:
+                radial-gradient(circle at 50% 20%,
+                    #18263a 0%,
+                    #0b111b 45%,
+                    #060a10 100%);
+            color: #e8edf5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .container {
+            width: 100%;
+            max-width: 410px;
+            padding: 24px;
+        }
+        .card {
+            background: rgba(15, 23, 35, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 18px;
+            padding: 34px;
+            box-shadow:
+                0 25px 70px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+        }
+        .brand {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            width: 58px;
+            height: 58px;
+            margin: 0 auto 17px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg,
+                    #3b82f6,
+                    #2563eb);
+            box-shadow:
+                0 10px 30px rgba(37, 99, 235, 0.35);
+        }
+        .logo svg {
+            width: 31px;
+            height: 31px;
+            fill: none;
+            stroke: white;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .brand h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 650;
+            letter-spacing: -0.4px;
+        }
+        .brand p {
+            margin: 7px 0 0;
+            color: #8e9bad;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 17px;
+        }
+        label {
+            display: block;
+            margin-bottom: 7px;
+            color: #b9c3d1;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 12px 13px;
+            border-radius: 9px;
+            border: 1px solid #2b3748;
+            background: #0b121d;
+            color: #edf2f7;
+            font-size: 14px;
+            outline: none;
+            transition:
+                border-color 0.15s ease,
+                box-shadow 0.15s ease,
+                background 0.15s ease;
+        }
+        input::placeholder {
+            color: #596678;
+        }
+        input:hover {
+            border-color: #3a485b;
+        }
+        input:focus {
+            background: #0d1622;
+            border-color: #3b82f6;
+            box-shadow:
+                0 0 0 3px rgba(59, 130, 246, 0.13);
+        }
+        button {
+            width: 100%;
+            margin-top: 7px;
+            padding: 12px;
+            border: 0;
+            border-radius: 9px;
+            background: #2563eb;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition:
+                background 0.15s ease,
+                transform 0.05s ease,
+                opacity 0.15s ease;
+        }
+        button:hover {
+            background: #3474ed;
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        button:disabled {
+            cursor: default;
+            opacity: 0.65;
+        }
+        .error {
+            display: none;
+            margin-top: 15px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.09);
+            border: 1px solid rgba(239, 68, 68, 0.22);
+            color: #fca5a5;
+            font-size: 13px;
+            text-align: center;
+        }
+        .footer {
+            margin-top: 25px;
+            text-align: center;
+            color: #596678;
+            font-size: 11px;
+        }
+        @media (max-width: 480px) {
+            .container {
+                padding: 16px;
+            }
+            .card {
+                padding: 27px 23px;
+                border-radius: 15px;
+            }
+            .brand {
+                margin-bottom: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="brand">
+                <div class="logo">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="14" rx="2"></rect>
+                        <path d="M7 21h10"></path>
+                        <path d="M9 18v3"></path>
+                        <path d="M15 18v3"></path>
+                        <path d="M8 9l2 2-2 2"></path>
+                        <path d="M12 13h4"></path>
+                    </svg>
+                </div>
+                <h1>XWebVNC</h1>
+                <p>Web Based Remote Desktop Access</p>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" placeholder="Linux user name" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password"
+                        placeholder="Enter password" required>
+                </div>
+                <button id="loginButton" type="submit">
+                    Sign in
+                </button>
+                <div id="error" class="error"></div>
+            </form>
+            <div class="footer">
+                Secure remote desktop connection <a href="/version">(version)</a>
+            </div>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById("loginForm");
+        const button = document.getElementById("loginButton");
+        const error = document.getElementById("error");
+        function base64Encode(str) {
+            return btoa(
+                String.fromCharCode(
+                    ...new TextEncoder().encode(str)
+                )
+            );
+        }
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            error.style.display = "none";
+            button.disabled = true;
+            button.textContent = "Signing in...";
+            const username =
+                document.getElementById("username").value;
+            const password =
+                document.getElementById("password").value;
+            const credentials =
+                username + ":" + password;
+            const encoded =
+                base64Encode(credentials);
+            document.cookie =
+                "V_AUTH=" +
+                encodeURIComponent(encoded) +
+                "; Path=/; SameSite=Strict";
+            try {
+                const response = await fetch("/login", {
+                    method: "GET",
+                    credentials: "same-origin",
+                    cache: "no-store"
+                });
+                if (response.ok) {
+                    window.location.href = "/";
+                    return;
+                }
+                document.cookie =
+                    "V_AUTH=; Path=/; Max-Age=0";
+                if (response.status === 401) {
+                    error.textContent =
+                        "Invalid username or password.";
+                } else {
+                    error.textContent =
+                        "Unable to sign in. Please try again.";
+                }
+                error.style.display = "block";
+            }
+            catch (e) {
+                document.cookie =
+                    "V_AUTH=; Path=/; Max-Age=0";
+                error.textContent =
+                    "Connection failed. Please try again.";
+                error.style.display = "block";
+            }
+            finally {
+                button.disabled = false;
+                button.textContent = "Sign in";
+            }
+        });
+    </script>
+</body>
+</html>
