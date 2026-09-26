@@ -3,9 +3,9 @@
 #include "screenint.h"
 #define MAX_CLIENTS 10
 
-#define VERSION   "1.0.0"
+#define VERSION   "1.0.1"
 #define TYPE      "Stable"
-#define NOTICE    "first stable release."
+#define NOTICE    "Login page added"
 #define BUGFIXES  "NA"
 
 

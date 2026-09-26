@@ -1,5 +1,6 @@
 web_files = [
   ['assets/index.html', 'htmlPage.h'],
+  ['assets/login.html', 'loginPage.h'],
   ['assets/vnclogo.PNG', 'logo.h']
 ]
 
