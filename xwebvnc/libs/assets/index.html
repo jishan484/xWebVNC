@@ -282,7 +282,7 @@
         document.addEventListener('paste', handlePaste);
         //update cursor
         function updateCanvasCursor(bytes) {
-            let p = 0;
+            let p = 0, hasCursorImage = 0;
             const width = (bytes[p] << 8) | bytes[p + 1];
             p += 2;
             const height = (bytes[p] << 8) | bytes[p + 1];
@@ -313,11 +313,13 @@
                         rgba[dst + 1] = 0;
                         rgba[dst + 2] = 0;
                         rgba[dst + 3] = 255;
+                        hasCursorImage = 1;
                     } else {
                         rgba[dst] = 255;
                         rgba[dst + 1] = 255;
                         rgba[dst + 2] = 255;
                         rgba[dst + 3] = 255;
+                        hasCursorImage = 1;
                     }
                 }
             }
@@ -328,7 +330,8 @@
                 const url = URL.createObjectURL(blob);
                 if (currentCursorURL) URL.revokeObjectURL(currentCursorURL);
                 currentCursorURL = url;
-                canvas.style.cursor = `url("${url}") ${hotX} ${hotY}, default`;
+                if(hasCursorImage) canvas.style.cursor = `url("${url}") ${hotX} ${hotY}, default`;
+                else canvas.style.cursor = "progress";
             }, "image/png");
         }
         async function handlePaste(e) {
