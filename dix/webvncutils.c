@@ -141,7 +141,7 @@ char *XWEBVNC_get_pointer_sprite_name(size_t *out_size)
         *out_size = 0;
         return 0;
     }
-    current_cursor = cursor->name;
+    current_cursor = cursor->id;
     
     if (!cursor || !cursor->bits)
         return NULL;
