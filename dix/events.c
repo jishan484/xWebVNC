@@ -124,6 +124,7 @@ Equipment Corporation.
 #include "dix/eventconvert.h"
 #include "dix/exevents_priv.h"
 #include "os/fmt.h"
+#include "webvnc.h"
 #include "xkb/xkbsrv_priv.h"
 
 #include "misc.h"
@@ -957,6 +958,7 @@ ChangeToCursor(DeviceIntPtr pDev, CursorPtr cursor)
         (*pScreen->DisplayCursor) (pDev, pScreen, cursor);
         FreeCursor(pSprite->current, (Cursor) 0);
         pSprite->current = RefCursor(cursor);
+        cursorChangeEvent();
     }
 }
 
@@ -3363,6 +3365,7 @@ InitializeSprite(DeviceIntPtr pDev, WindowPtr pWin)
     if (pSprite->current)
         FreeCursor(pSprite->current, None);
     pSprite->current = pCursor;
+    cursorChangeEvent();
 
     if (pScreen) {
         (*pScreen->RealizeCursor) (pDev, pScreen, pSprite->current);
@@ -3445,6 +3448,7 @@ UpdateSpriteForScreen(DeviceIntPtr pDev, ScreenPtr pScreen)
     if (pSprite->current)
         FreeCursor(pSprite->current, 0);
     pSprite->current = pCursor;
+    cursorChangeEvent();
     pSprite->spriteTraceGood = 1;
     pSprite->spriteTrace[0] = win;
     (*pScreen->CursorLimits) (pDev,

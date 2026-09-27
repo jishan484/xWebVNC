@@ -257,6 +257,9 @@
         let socket_manual_closed_flag = false;
         let socket_reconnect_retry = 0;
         let wakeLockSentinel = null;
+        const cursorCanvas = document.createElement("canvas");
+        const cursorCtx = cursorCanvas.getContext("2d");
+        let currentCursorURL = null;
         setTimeout(function () { connect(); }, 2000);
         if(!window.matchMedia("(pointer:coarse)").matches)document.querySelectorAll(".mobileOnly").forEach(e=>e.style.display="none");
         function mobilePaste(){
@@ -277,6 +280,57 @@
             hideMenu();
         }
         document.addEventListener('paste', handlePaste);
+        //update cursor
+        function updateCanvasCursor(bytes) {
+            let p = 0;
+            const width = (bytes[p] << 8) | bytes[p + 1];
+            p += 2;
+            const height = (bytes[p] << 8) | bytes[p + 1];
+            p += 2;
+            const hotX = (bytes[p] << 8) | bytes[p + 1];
+            p += 2;
+            const hotY = (bytes[p] << 8) | bytes[p + 1];
+            p += 2;
+            const rowBytes = ((width + 31) >> 5) << 2;
+            const bitmapSize = rowBytes * height;
+            if (!width || !height || bytes.length < p + bitmapSize * 2) return;
+            const sourceOffset = p;
+            const maskOffset = p + bitmapSize;
+            const rgba = new Uint8ClampedArray(width * height * 4);
+            for (let y = 0; y < height; y++) {
+                const row = y * rowBytes;
+                const dstRow = y * width * 4;
+                for (let x = 0; x < width; x++) {
+                    const byteIndex = row + (x >> 3);
+                    const bit = 1 << (x & 7);
+                    const s = (bytes[sourceOffset + byteIndex] & bit) !== 0;
+                    const m = (bytes[maskOffset + byteIndex] & bit) !== 0;
+                    const dst = dstRow + x * 4;
+                    if (!m) {
+                        rgba[dst + 3] = 0;
+                    } else if (s) {
+                        rgba[dst] = 0;
+                        rgba[dst + 1] = 0;
+                        rgba[dst + 2] = 0;
+                        rgba[dst + 3] = 255;
+                    } else {
+                        rgba[dst] = 255;
+                        rgba[dst + 1] = 255;
+                        rgba[dst + 2] = 255;
+                        rgba[dst + 3] = 255;
+                    }
+                }
+            }
+            cursorCanvas.width = width;
+            cursorCanvas.height = height;
+            cursorCtx.putImageData(new ImageData(rgba, width, height), 0, 0);
+            cursorCanvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                if (currentCursorURL) URL.revokeObjectURL(currentCursorURL);
+                currentCursorURL = url;
+                canvas.style.cursor = `url("${url}") ${hotX} ${hotY}, default`;
+            }, "image/png");
+        }
         async function handlePaste(e) {
             e.stopPropagation();
             e.preventDefault();
@@ -301,17 +355,7 @@
             }
             e.target.value = '';
         });
-        function updateCanvasCursor(data) {
-            let cursorMap = {
-                '0': 'default', '379': 'default', '380': 'default', '412': 'pointer',
-                '411': 'text', '513': 'text', '381': 'default', '382': 'grabbing',
-                '385': 'n-resize', '384': 'grabbing', '391': 'w-resize',
-                '392': 'nw-resize', '390': 'sw-resize', '389': 's-resize',
-                '387': 'e-resize', '388': 'se-resize', '386': 'ne-resize',
-                '410': 'pointer', '413': 'text', '414': 'default'
-            };
-            canvas.style.cursor = cursorMap[data] || 'default';
-        }
+        
         const SAMPLE_RATE = 8000;
         const CHANNELS = 1;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
@@ -402,7 +446,6 @@
                         data = "D" + mousedownPosition.x + " " + mousedownPosition.y + " " + x + " " + y + " ";
                         ws.send(data);
                     } else {
-                        canvas.style.cursor = "default";
                         data = "C" + x + " " + y + " ";
                         ws.send(data);
                     }
@@ -536,14 +579,13 @@
                         if (resp[0] == 65) {
                             playAudio(resp.slice(i + 1));
                         }
+                        if (resp[0] == 80) {
+                            updateCanvasCursor(resp.slice(i + 1));
+                        }
                     });
                 }
                 else {
                     let data = event.data.toString();
-                    if (data[0] == 'P') {
-                        updateCanvasCursor(data.split(' ')[1]);
-                        return;
-                    }
                     data = data.replace(/'/ig, '"');
                     data = JSON.parse(data);
                     config = data;

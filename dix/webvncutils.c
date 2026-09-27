@@ -2,8 +2,12 @@
 #include "xkbsrv.h"
 #include "xwebvnc/webvnc.h"
 #include "scrnintstr.h"
+#include "servermd.h"
 #include "windowstr.h"
+#include <X11/X.h>
 #include <jpeglib.h>
+
+XID current_cursor;
 
 
 void XWEBVNC_init_input(void) {
@@ -111,6 +115,89 @@ void getSubImage(int x, int y, int rect_w, int rect_h, XScreenConf *screenConf, 
 }
 
 
-Atom XWEBVNC_get_pointer_sprite_name(void) {
-    return inputInfo.pointer->spriteInfo->sprite->current->name;
+char *XWEBVNC_get_pointer_sprite_name(size_t *out_size)
+{
+    static unsigned char *data = NULL;
+    static size_t allocated = 0;
+
+    CursorPtr cursor;
+    CursorBitsPtr bits;
+
+    size_t row_bytes;
+    size_t bitmap_size;
+    size_t total_size;
+    size_t p;
+
+    if (out_size)
+        *out_size = 0;
+
+    if (!inputInfo.pointer ||
+        !inputInfo.pointer->spriteInfo ||
+        !inputInfo.pointer->spriteInfo->sprite)
+        return NULL;
+
+    cursor = inputInfo.pointer->spriteInfo->sprite->current;
+    if(current_cursor == cursor->id){
+        *out_size = 0;
+        return 0;
+    }
+    current_cursor = cursor->name;
+    
+    if (!cursor || !cursor->bits)
+        return NULL;
+
+    bits = cursor->bits;
+
+    if (!bits->source || !bits->mask)
+        return NULL;
+
+    row_bytes = BitmapBytePad(bits->width);
+    bitmap_size = row_bytes * bits->height;
+
+    total_size = 3 + 8 + bitmap_size + bitmap_size;
+
+    if (allocated < total_size) {
+        unsigned char *tmp = realloc(data, total_size);
+
+        if (!tmp)
+            return NULL;
+
+        data = tmp;
+        allocated = total_size;
+    }
+
+    p = 0;
+
+    /* magic */
+    data[p++] = 'P';
+    data[p++] = 'S';
+    data[p++] = '\n';
+
+    /* width */
+    data[p++] = (bits->width >> 8) & 0xff;
+    data[p++] = bits->width & 0xff;
+
+    /* height */
+    data[p++] = (bits->height >> 8) & 0xff;
+    data[p++] = bits->height & 0xff;
+
+    /* hotspot X */
+    data[p++] = (bits->xhot >> 8) & 0xff;
+    data[p++] = bits->xhot & 0xff;
+
+    /* hotspot Y */
+    data[p++] = (bits->yhot >> 8) & 0xff;
+    data[p++] = bits->yhot & 0xff;
+    /* source */
+    memcpy(data + p, bits->source, bitmap_size);
+    p += bitmap_size;
+
+    /* mask */
+    memcpy(data + p, bits->mask, bitmap_size);
+    p += bitmap_size;
+
+    if (out_size)
+        *out_size = p;
+
+    return (char *)data;
 }

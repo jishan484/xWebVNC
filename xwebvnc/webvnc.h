@@ -3,10 +3,10 @@
 #include "screenint.h"
 #define MAX_CLIENTS 10
 
-#define VERSION   "1.0.1"
+#define VERSION   "1.1.0"
 #define TYPE      "Stable"
-#define NOTICE    "Login page added"
-#define BUGFIXES  "NA"
+#define NOTICE    "Bug fixes"
+#define BUGFIXES  "Cursor pointer issue fixed"
 
 
 #include <stdbool.h>
@@ -86,6 +86,7 @@ void ws_p_sendRaw(Websocket *ws, int startByte, char *data1, char *data2, long d
 //------------------------------------------------//
 
 //
+void cursorChangeEvent(void);
 void setup_wakeup_pipe(void);
 void XWEBVNC_init_input(void);
 void cleanup_wakeup_pipe(void);
@@ -94,9 +95,9 @@ void process_mouse_move(int x, int y);
 void add_mapping(long sym, int keycode);
 int resizeScreen(int width, int height);
 void process_mouse_scroll(int direction);
-Atom XWEBVNC_get_pointer_sprite_name(void);
 void input_init(Websocket * gws, int w, int h);
 void process_key_press(int keycode, int is_pressed);
+char *XWEBVNC_get_pointer_sprite_name(size_t *out_size);
 void process_client_Input(char *data, uint64_t len, int clientSD);
 int  buildstr(char *buff, const char *prefix, int val);
 void process_mouse_drag(int x1, int y1, int x2, int y2);

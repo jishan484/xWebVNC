@@ -1,4 +1,5 @@
 #include <X11/X.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "input.h"
@@ -65,9 +66,15 @@ void process_mouse_move(int x, int y) {
     valuator_mask_set(mask, 1, y);  // axis 1 = Y
     QueuePointerEvents(mouse, MotionNotify,0, POINTER_ABSOLUTE, mask);
     write(wake_pipe[1], "x", 1);
-    int ns = buildstr(buffer_, "P ", XWEBVNC_get_pointer_sprite_name());
-    ws_sendRaw(gl_ws, 129, buffer_, ns, -1);
 }
+
+void cursorChangeEvent(void) {
+    size_t t = 3;
+    char * buff__ = XWEBVNC_get_pointer_sprite_name(&t);
+    if(buff__ == 0 || t == 0) return;
+    ws_sendRaw(gl_ws, 130, buff__, t, -1);
+}
+
 extern int isProcessLockedByOtherThread;
 void process_mouse_click(int button);
 void process_mouse_click(int button) {

@@ -42,7 +42,7 @@ done
 
 
 # Release version variable
-release="v1.0.0-stable"
+release="v1.1.0-stable"
 
 # Detect architecture
 arch=$(uname -m)
