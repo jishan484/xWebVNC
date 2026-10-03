@@ -6,7 +6,7 @@
 #define VERSION   "1.1.0"
 #define TYPE      "Stable"
 #define NOTICE    "Bug fixes"
-#define BUGFIXES  "Cursor pointer issue fixed"
+#define BUGFIXES  "1. Cursor pointer issue fixed<br>2. Mouse drag event fixed"
 
 
 #include <stdbool.h>
@@ -96,11 +96,11 @@ void add_mapping(long sym, int keycode);
 int resizeScreen(int width, int height);
 void process_mouse_scroll(int direction);
 void input_init(Websocket * gws, int w, int h);
+void process_mouse_drag(int x1, int y1, int state);
 void process_key_press(int keycode, int is_pressed);
 char *XWEBVNC_get_pointer_sprite_name(size_t *out_size);
 void process_client_Input(char *data, uint64_t len, int clientSD);
 int  buildstr(char *buff, const char *prefix, int val);
-void process_mouse_drag(int x1, int y1, int x2, int y2);
 
 
   //------------------------------------------------//

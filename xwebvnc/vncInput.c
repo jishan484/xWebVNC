@@ -84,18 +84,11 @@ void process_mouse_click(int button) {
     write(wake_pipe[1], "x", 1);
 }
 
-void process_mouse_drag(int x1, int y1, int x2, int y2) {
+void process_mouse_drag(int x1, int y1, int STATE) {
     if(!app_running_indicator) return;
     process_mouse_move(x1, y1);
-    QueuePointerEvents(mouse, ButtonPress, 1, 0, NULL);
-    for (int i = 0; i <= 5; i++) {
-        int nx = x1 + (x2 - x1) * i / 5;
-        int ny = y1 + (y2 - y1) * i / 5;
-        process_mouse_move(nx, ny);
-        usleep(10000);
-    }
-    process_mouse_move(x2, y2);
-    QueuePointerEvents(mouse, ButtonRelease, 1, 0, NULL);
+    if(STATE) QueuePointerEvents(mouse, ButtonPress, 1, 0, NULL);
+    else QueuePointerEvents(mouse, ButtonRelease, 1, 0, NULL);
     write(wake_pipe[1], "x", 1);
 }
 
@@ -154,19 +147,17 @@ void process_client_Input(char *data, uint64_t len, int clientSD) {
     }
     else if (data[0] == 'D')
     {
+        i++;
         while (data[i] != 32 && i < len)
             x = x * 10 + data[i++] - 48;
         i++;
         while (data[i] != 32 && i < len)
             y = y * 10 + data[i++] - 48;
-        i++;
-        while (data[i] != 32 && i < len)
-            x2 = x2 * 10 + data[i++] - 48;
-        i++;
-        while (data[i] != 32 && i < len)
-            y2 = y2 * 10 + data[i++] - 48;
-        
-        process_mouse_drag(x, y, x2, y2);
+        if(data[1] == 'S') {
+            process_mouse_drag(x, y, 1);
+        } else if(data[1] == 'E') {
+            process_mouse_drag(x, y, 0);
+        }
     }
     else if (data[0] == 'T')
     {

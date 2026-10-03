@@ -246,7 +246,8 @@
         const ctx = canvas.getContext("2d");
         var config = null;
         var mouseMoveTimeOut;
-        var mousedownPosition = { state: 0, x: 0, y: 0 };
+        var mousedownPosition = { state: 0, x: 0, y: 0, isDragEventEligible: 0 };
+        var mouseMoveRefreshInterval = 20;
         var mouseScrolled = 0;
         var webSocket = null;
         var isConnected = false;
@@ -437,6 +438,8 @@
                     e.preventDefault();
                     mousedownPosition.x = Math.floor(e.offsetX / canvas.offsetWidth * canvas.width);
                     mousedownPosition.y = Math.floor(e.offsetY / canvas.offsetHeight * canvas.height);
+                    mousedownPosition.isDragEventEligible = true;
+                    mouseMoveRefreshInterval = 0;
                     return false;
                 }
                 canvas.onmouseup = function (e) {
@@ -445,13 +448,14 @@
                     var x = Math.floor(e.offsetX / canvas.offsetWidth * canvas.width);
                     var y = Math.floor(e.offsetY / canvas.offsetHeight * canvas.height);
                     if (Math.abs(mousedownPosition.x - x) > 1 || Math.abs(mousedownPosition.y - y) > 1) {
-                        canvas.style.cursor = "grabbing";
-                        data = "D" + mousedownPosition.x + " " + mousedownPosition.y + " " + x + " " + y + " ";
+                        data = "DE" + x + " " + y + " ";
                         ws.send(data);
                     } else {
                         data = "C" + x + " " + y + " ";
                         ws.send(data);
                     }
+                    mousedownPosition.isDragEventEligible = false;
+                    mouseMoveRefreshInterval = 20;
                     return false;
                 }
                 canvas.oncontextmenu = function (e) {
@@ -468,9 +472,12 @@
                     mouseMoveTimeOut = setTimeout(function () {
                         var x = Math.floor(e.offsetX / canvas.offsetWidth * canvas.width);
                         var y = Math.floor(e.offsetY / canvas.offsetHeight * canvas.height);
-                        data = "M" + x + " " + y + " ";
+                        data = (mousedownPosition.isDragEventEligible && (Math.abs(mousedownPosition.x - x) > 1 || Math.abs(mousedownPosition.y - y) > 1))
+                                ? "DS" + mousedownPosition.x + " " + mousedownPosition.y + " " : "M" + x + " " + y + " ";
+                        mousedownPosition.isDragEventEligible = false;
+                        mouseMoveRefreshInterval = mouseMoveRefreshInterval < 1 ? 10:mouseMoveRefreshInterval;
                         ws.send(data);
-                    }, 20);
+                    }, mouseMoveRefreshInterval);
                 }
                 canvas.onwheel = function (e) {
                     e.preventDefault();
