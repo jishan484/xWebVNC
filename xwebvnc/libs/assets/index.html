@@ -248,7 +248,8 @@
         var mouseMoveTimeOut;
         var mousedownPosition = { state: 0, x: 0, y: 0, isDragEventEligible: 0 };
         var mouseMoveRefreshInterval = 20;
-        var mouseScrolled = 0;
+        var mouseScrolledY = 0;
+        var mouseScrolledX = 0;
         var webSocket = null;
         var isConnected = false;
         var serverPixelData = [];
@@ -481,18 +482,18 @@
                 }
                 canvas.onwheel = function (e) {
                     e.preventDefault();
-                    mouseScrolled += e.deltaY;
-                    if (mouseScrolled > 40) {
-                        mouseScrolled = 0;
-                        ws.send("B");
+                    mouseScrolledY += e.deltaY;
+                    mouseScrolledX += e.deltaX;
+                    if(Math.abs(mouseScrolledX) > Math.abs(mouseScrolledY)) {
+                        if (mouseScrolledX > 40) sendScrollEvent(ws, "GR");
+                        if (mouseScrolledX < -40) sendScrollEvent(ws, "GL");
                     }
-                    if (mouseScrolled < -40) {
-                        mouseScrolled = 0;
-                        ws.send("T");
-                    }
+                    if (mouseScrolledY > 40) sendScrollEvent(ws, "GB");
+                    if (mouseScrolledY < -40) sendScrollEvent(ws, "GT");
                     return false;
                 }
                 let touchStartY = 0;
+                let touchStartX = 0;
                 let lastTouchedOn = 0;
                 let isClickStarted = 0;
                 let lastTouched = { x: 0, y: 0 };
@@ -501,6 +502,7 @@
                     isClickStarted = 1;
                     const touch = e.touches[0];
                     touchStartY = touch.clientY;
+                    touchStartX = touch.clientX;
                     const rect = canvas.getBoundingClientRect();
                     let x_ = Math.floor((touch.clientX - rect.left) / rect.width * canvas.width);
                     let y_ = Math.floor((touch.clientY - rect.top) / rect.height * canvas.height);
@@ -522,16 +524,19 @@
                     isClickStarted = 0;
                     const touch = e.touches[0];
                     const touchEndY = touch.clientY;
+                    const touchEndX = touch.clientX;
                     const deltaY = touchStartY - touchEndY;
-                    mouseScrolled += deltaY;
-                    if (mouseScrolled >= 33) {
-                        mouseScrolled = 0;
-                        ws.send("B");
-                    } else if (mouseScrolled <= -33) {
-                        mouseScrolled = 0;
-                        ws.send("T");
+                    const deltaX = touchStartX - touchEndX;
+                    mouseScrolledY += deltaY;
+                    mouseScrolledX += deltaX;
+                    if(Math.abs(mouseScrolledX) > Math.abs(mouseScrolledY)) {
+                        if (mouseScrolledX > 33) sendScrollEvent(ws, "GR");
+                        if (mouseScrolledX < -33) sendScrollEvent(ws, "GL");
                     }
+                    if (mouseScrolledY >= 33) sendScrollEvent(ws, "GB");
+                    else if (mouseScrolledY <= -33) sendScrollEvent(ws, "GT");
                     touchStartY = touchEndY;
+                    touchStartX = touchEndX;
                 }, { passive: false });
                 document.onkeydown = function (e) {
                     if (e.ctrlKey && e.keyCode != 17) {
@@ -622,6 +627,11 @@
             window.scrollBy(0, 0);
         }, 30000);
         let qualityMode = 20;
+        function sendScrollEvent(ws, direction) {
+            mouseScrolledY = 0;
+            mouseScrolledX = 0;
+            ws.send(direction);
+        }
         function toggleQuality(config_) {
             let div = document.getElementById('qualityToggle');
             if (webSocket && webSocket.readyState === 1 && config_ == null) {

@@ -92,9 +92,9 @@ void process_mouse_drag(int x1, int y1, int STATE) {
     write(wake_pipe[1], "x", 1);
 }
 
-void process_mouse_scroll(int direction) {
+void process_mouse_scroll(int direction , int type) {
     if(!app_running_indicator) return;
-    int button = (direction > 0) ? 4 : 5; // >0 = up, <0 = down
+    int button = (type == 1) ? ((direction > 0) ? 4 : 5) : ((direction > 0) ? 6 : 7);
     QueuePointerEvents(mouse, ButtonPress, button, 0, NULL);
     QueuePointerEvents(mouse, ButtonRelease, button, 0, NULL);
     write(wake_pipe[1], "x", 1);
@@ -108,8 +108,10 @@ void process_mouse_scroll(int direction) {
 // Q: for quality
 // P: for paste
 // A: for audio
-// B: go bottom (scroll)
-// T: go top (scroll)
+// GB: go bottom (scroll)
+// GT: go top (scroll)
+// GL: go Left (scroll)
+// GR: go Right(scroll)
 // S: for screen
 
 void process_client_Input(char *data, uint64_t len, int clientSD) {
@@ -159,13 +161,12 @@ void process_client_Input(char *data, uint64_t len, int clientSD) {
             process_mouse_drag(x, y, 0);
         }
     }
-    else if (data[0] == 'T')
+    else if (data[0] == 'G')
     {
-        process_mouse_scroll(1);
-    }
-    else if (data[0] == 'B')
-    {
-        process_mouse_scroll(-1);
+        if(data[1] == 'T') process_mouse_scroll(1, 1);
+        if(data[1] == 'B') process_mouse_scroll(-1, 1);
+        if(data[1] == 'L') process_mouse_scroll(1, 0);
+        if(data[1] == 'R') process_mouse_scroll(-1, 0);
     }
     else if (data[0] == 'K')
     {
